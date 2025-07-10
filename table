@@ -1,8 +1,8 @@
+// Thông tin chung người dùng, bao gồm đăng nhập và trạng thái
 Table users {
   id            int         [pk, increment]
   username      varchar(50)  [not null, unique]
   full_name     varchar(100) [not null]
-  addresses     varchar(1000)
   password_hash varchar(255) [not null]
   is_active     boolean      [not null]
   date_of_birth date
@@ -12,6 +12,114 @@ Table users {
   updated_at    timestamp
 }
 
+// Đa email cho user, đánh dấu email chính
+Table user_email {
+  id         int     [pk, increment]
+  user_id    int     [ref: > users.id]
+  email      varchar(100) [not null, unique]
+  type       varchar(20)
+  is_primary boolean      [default: false]
+
+  indexes {
+    (user_id, is_primary)
+  }
+}
+
+// Đa địa chỉ cho user, đánh dấu địa chỉ chính
+Table user_addresses {
+  id         int     [pk, increment]
+  user_id    int     [ref: > users.id]
+  address    varchar(255) [not null]
+  type       varchar(20)
+  is_primary boolean      [default: false]
+
+  indexes {
+    (user_id, is_primary)
+  }
+}
+
+// Đa số điện thoại cho user, đánh dấu số chính
+Table user_phones {
+  id         int     [pk, increment]
+  user_id    int     [ref: > users.id]
+  phone      varchar(20) [not null, unique]
+  type       varchar(20)
+  is_primary boolean      [default: false]
+
+  indexes {
+    (user_id, is_primary)
+  }
+}
+
+// Vai trò (role) chung
+Table roles {
+  id          int    [pk, increment]
+  name        varchar(50) [not null, unique]
+  description text
+
+  indexes {
+    (name)
+  }
+}
+
+// Quyền (permission) chi tiết
+Table permissions {
+  id          int    [pk, increment]
+  name        varchar(50) [not null, unique]
+  description text
+
+  indexes {
+    (name)
+  }
+}
+
+// Gán role cho user
+Table user_roles {
+  user_id int [ref: > users.id]
+  role_id int [ref: > roles.id]
+
+  indexes {
+    (user_id, role_id) [pk]
+    (role_id)
+  }
+}
+
+// Gán permission cho role
+Table role_permissions {
+  role_id       int [ref: > roles.id]
+  permission_id int [ref: > permissions.id]
+
+  indexes {
+    (role_id, permission_id) [pk]
+    (permission_id)
+  }
+}
+
+// Thông tin chi nhánh nha khoa
+Table branches {
+  id         int          [pk, increment]
+  name       varchar(100) [not null, unique]
+  address    varchar(255)
+  phone      varchar(20)
+  email      varchar(100)
+  is_active  boolean      [default: true]
+  created_at timestamp
+  updated_at timestamp
+}
+
+// Phòng khám trong mỗi chi nhánh
+Table rooms {
+  id        int    [pk, increment]
+  branch_id int    [ref: > branches.id]
+  name      varchar(50) [not null]
+  description text
+
+  indexes {
+    (branch_id, name) [unique]
+  }
+}
+
+// Nhân viên (extends users)
 Table employees {
   user_id        int        [pk, ref: > users.id]
   position       varchar(50)
@@ -23,6 +131,7 @@ Table employees {
   updated_at     timestamp
 }
 
+// Bệnh nhân (extends users)
 Table patients {
   user_id                 int        [pk, ref: > users.id]
   medical_history         text
@@ -36,95 +145,10 @@ Table patients {
   updated_at              timestamp
 }
 
-Table user_email {
-  id         int     [pk, increment]
-  user_id    int     [ref: > users.id]
-  email      varchar(100) [not null, unique]
-  type       varchar(20)
-  is_primary boolean      [default: false]
-
-  indexes {
-    (user_id, is_primary)
-  }
-}
-
-Table user_phones {
-  id         int     [pk, increment]
-  user_id    int     [ref: > users.id]
-  phone      varchar(20) [not null, unique]
-  type       varchar(20)
-  is_primary boolean      [default: false]
-
-  indexes {
-    (user_id, is_primary)
-  }
-}
-
-Table roles {
-  id          int    [pk, increment]
-  name        varchar(50) [not null, unique]
-  description text
-
-  indexes {
-    (name)
-  }
-}
-
-Table permissions {
-  id          int    [pk, increment]
-  name        varchar(50) [not null, unique]
-  description text
-
-  indexes {
-    (name)
-  }
-}
-
-Table role_permissions {
-  role_id       int [ref: > roles.id]
-  permission_id int [ref: > permissions.id]
-
-  indexes {
-    (role_id, permission_id) [pk]
-    (permission_id)
-  }
-}
-
-Table user_roles {
-  user_id int [ref: > users.id]
-  role_id int [ref: > roles.id]
-
-  indexes {
-    (user_id, role_id) [pk]
-    (role_id)
-  }
-}
-
-Table branches {
-  id          int          [pk, increment]
-  name        varchar(100) [not null, unique]
-  address     varchar(255)
-  phone       varchar(20)
-  email       varchar(100)
-  is_active   boolean      [default: true]
-  created_at  timestamp
-  updated_at  timestamp
-}
-
-Table rooms {
-  id          int    [pk, increment]
-  branch_id   int    [ref: > branches.id]
-  name        varchar(50) [not null]
-  description text
-
-  indexes {
-    (branch_id, name) [unique]
-  }
-}
-
+// Quy định chi nhánh nơi nhân viên làm việc
 Table employee_branches {
-  employee_id   int [ref: > employees.user_id]
-  branch_id     int [ref: > branches.id]
+  employee_id int [ref: > employees.user_id]
+  branch_id   int [ref: > branches.id]
 
   indexes {
     (employee_id, branch_id) [pk]
@@ -132,35 +156,38 @@ Table employee_branches {
   }
 }
 
-
+// Nhóm dịch vụ
 Table service_categories {
   id          int    [pk, increment]
   name        varchar(50) [not null, unique]
   description text
 }
 
+// Dịch vụ đơn lẻ
 Table services {
   id               int          [pk, increment]
   category_id      int          [ref: > service_categories.id]
   code             varchar(50)  [not null, unique]
   name             varchar(100) [not null]
   description      text
-  unit_price       float       [not null]
+  unit_price       decimal(12,2) [not null]
   duration_minutes int
   created_at       timestamp
   updated_at       timestamp
 }
 
+// Gói dịch vụ
 Table packages {
   id          int    [pk, increment]
   code        varchar(50)  [not null, unique]
   name        varchar(100) [not null]
   description text
-  price       float       [not null]
+  price       decimal(12,2) [not null]
   created_at  timestamp
   updated_at  timestamp
 }
 
+// Liệt kê dịch vụ trong từng gói
 Table package_services {
   package_id int [ref: > packages.id]
   service_id int [ref: > services.id]
@@ -172,17 +199,18 @@ Table package_services {
 }
 
 
+// Mã giảm giá
 Table discount_codes {
-  id           int          [pk, increment]
-  code         varchar(50)  [not null, unique]
-  description  text
-  type         varchar(20)
-  amount       decimal(10,2)
-  valid_from   date
-  valid_to     date
-  is_active    boolean      [default: true]
-  created_at   timestamp
-  updated_at   timestamp
+  id          int          [pk, increment]
+  code        varchar(50)  [not null, unique]
+  description text
+  type        varchar(20)
+  amount      decimal(10,2)
+  valid_from  date
+  valid_to    date
+  is_active   boolean      [default: true]
+  created_at  timestamp
+  updated_at  timestamp
 
   indexes {
     (code)
@@ -190,6 +218,7 @@ Table discount_codes {
   }
 }
 
+// Giảm giá áp dụng cho dịch vụ
 Table service_discounts {
   service_id       int [ref: > services.id]
   discount_code_id int [ref: > discount_codes.id]
@@ -200,6 +229,7 @@ Table service_discounts {
   }
 }
 
+// Giảm giá áp dụng cho gói
 Table package_discounts {
   package_id       int [ref: > packages.id]
   discount_code_id int [ref: > discount_codes.id]
@@ -210,38 +240,42 @@ Table package_discounts {
   }
 }
 
-
+// Các trạng thái của lịch hẹn
 Table appointment_statuses {
   code varchar(30) [pk]
   name text
 }
 
+// Các trạng thái của hóa đơn
 Table invoice_statuses {
   code varchar(30) [pk]
   name text
 }
 
+// Các trạng thái của thông báo
 Table notification_statuses {
   code varchar(30) [pk]
   name text
 }
 
+// Lịch hẹn của bệnh nhân
 Table appointments {
-  id            int        [pk, increment]
-  patient_id    int        [ref: > patients.user_id]
-  room_id       int        [ref: > rooms.id]
-  scheduled_at  timestamp  
-  status_code   varchar(30) [ref: > appointment_statuses.code]
-  notes         text
-  deleted_at    timestamp  
-  created_at    timestamp
-  updated_at    timestamp
+  id           int        [pk, increment]
+  patient_id   int        [ref: > patients.user_id]
+  room_id      int        [ref: > rooms.id]
+  scheduled_at timestamp  
+  status_code  varchar(30) [ref: > appointment_statuses.code]
+  notes        text
+  deleted_at   timestamp  
+  created_at   timestamp
+  updated_at   timestamp
 
   indexes {
     (status_code)
   }
 }
 
+// Nhân viên tham gia lịch hẹn với vai trò
 Table appointment_staff {
   appointment_id int [ref: > appointments.id]
   employee_id    int [ref: > employees.user_id]
@@ -253,11 +287,12 @@ Table appointment_staff {
   }
 }
 
+// Dịch vụ thực hiện trong lịch hẹn
 Table appointment_services {
-  appointment_id int   [ref: > appointments.id]
-  service_id     int   [ref: > services.id]
+  appointment_id int     [ref: > appointments.id]
+  service_id     int     [ref: > services.id]
   quantity       int
-  unit_price     float
+  unit_price     decimal(12,2)
   performed_at   timestamp
 
   indexes {
@@ -265,16 +300,18 @@ Table appointment_services {
   }
 }
 
+// Gói dịch vụ thực hiện trong lịch hẹn
 Table appointment_packages {
-  appointment_id int   [ref: > appointments.id]
-  package_id     int   [ref: > packages.id]
-  unit_price     float
+  appointment_id int     [ref: > appointments.id]
+  package_id     int     [ref: > packages.id]
+  unit_price     decimal(12,2)
 
   indexes {
     (appointment_id, package_id) [pk]
   }
 }
 
+// Ghi chép quy trình điều trị và theo dõi
 Table treatment_records {
   id             int       [pk, increment]
   appointment_id int       [ref: > appointments.id]
@@ -283,6 +320,7 @@ Table treatment_records {
   created_at     timestamp
 }
 
+// Hình ảnh y tế liên quan đến lịch hẹn
 Table medical_images {
   id             int       [pk, increment]
   appointment_id int       [ref: > appointments.id]
@@ -293,12 +331,14 @@ Table medical_images {
 }
 
 
+// Đơn thuốc cho mỗi lịch hẹn
 Table prescriptions {
   id             int       [pk, increment]
   appointment_id int       [ref: > appointments.id]
   prescribed_at  timestamp
 }
 
+// Mục thuốc trong đơn
 Table prescription_items {
   id              int    [pk, increment]
   prescription_id int    [ref: > prescriptions.id]
@@ -307,12 +347,14 @@ Table prescription_items {
   quantity        int
 }
 
+// Danh sách xét nghiệm
 Table lab_tests {
   id          int    [pk, increment]
   name        varchar(100)
   description text
 }
 
+// Xét nghiệm yêu cầu và kết quả
 Table appointment_lab_tests {
   appointment_id int       [ref: > appointments.id]
   test_id        int       [ref: > lab_tests.id]
@@ -326,10 +368,11 @@ Table appointment_lab_tests {
 }
 
 
+// Hóa đơn cho lịch hẹn
 Table invoices {
   id             int       [pk, increment]
   appointment_id int       [ref: > appointments.id]
-  total_amount   float
+  total_amount   decimal(12,2)
   status_code    varchar(30) [ref: > invoice_statuses.code]
   issued_at      timestamp
   due_date       date
@@ -337,24 +380,26 @@ Table invoices {
   updated_at     timestamp
 }
 
+// Chi tiết từng dòng trên hóa đơn
 Table invoice_items {
   id          int    [pk, increment]
   invoice_id  int    [ref: > invoices.id]
   description varchar(255)
   quantity    int
-  unit_price  float
-  line_amount float
+  unit_price  decimal(12,2)
+  line_amount decimal(12,2)
 
   indexes {
     (invoice_id)
   }
 }
 
+// Thanh toán cho hóa đơn
 Table payments {
   id             int    [pk, increment]
   invoice_id     int    [ref: > invoices.id]
   payment_method varchar(50)
-  amount         float
+  amount         decimal(12,2)
   paid_at        timestamp
 
   indexes {
@@ -363,10 +408,11 @@ Table payments {
   }
 }
 
+// Phiếu ghi giảm trừ (credit note)
 Table credit_notes {
   id          int       [pk, increment]
   invoice_id  int       [ref: > invoices.id]
-  amount      float
+  amount      decimal(12,2)
   reason      text
   issued_at   timestamp
   created_at  timestamp
@@ -378,6 +424,7 @@ Table credit_notes {
 }
 
 
+// Lịch sử thông báo đã gửi cho bệnh nhân
 Table notification_history {
   id             int    [pk, increment]
   patient_id     int    [ref: > patients.user_id]
@@ -394,6 +441,7 @@ Table notification_history {
   }
 }
 
+// Tình trạng răng của bệnh nhân theo từng mã răng
 Table patient_teeth {
   patient_id int    [ref: > patients.user_id]
   tooth_code varchar(5)
@@ -405,6 +453,7 @@ Table patient_teeth {
 }
 
 
+// Quản lý tồn kho vật tư
 Table inventory_items {
   id            int    [pk, increment]
   name          varchar(100)
@@ -417,6 +466,7 @@ Table inventory_items {
   }
 }
 
+// Ghi nhận biến động tồn kho
 Table inventory_movements {
   id           int       [pk, increment]
   item_id      int       [ref: > inventory_items.id]
