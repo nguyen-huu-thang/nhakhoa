@@ -1,32 +1,93 @@
 Table users {
-  id            int       [pk, increment]
+  id            int         [pk, increment]
   username      varchar(50)  [not null, unique]
-  email         varchar(100) [not null, unique]
+  full_name     varchar(100) [not null]
+  addresses     varchar(1000)
   password_hash varchar(255) [not null]
   is_active     boolean      [not null]
-  deleted_at    timestamp
+  date_of_birth date
+  gender        varchar(10)
+  deleted_at    timestamp    
   created_at    timestamp
   updated_at    timestamp
 }
 
-Table user_addresses {
-  id      int  [pk, increment]
-  user_id int  [ref: > users.id]
-  address varchar(255)
-  type    varchar(20)
+Table employees {
+  user_id        int        [pk, ref: > users.id]
+  position       varchar(50)
+  license_number varchar(50)
+  specialties    text
+  hired_at       date
+  deleted_at     timestamp    
+  created_at     timestamp
+  updated_at     timestamp
+}
+
+Table patients {
+  user_id                 int        [pk, ref: > users.id]
+  medical_history         text
+  allergy                 text
+  emergency_contact_name  varchar(100)
+  emergency_contact_phone varchar(20)
+  insurance_provider      varchar(100)
+  insurance_number        varchar(50)
+  deleted_at              timestamp    
+  created_at              timestamp
+  updated_at              timestamp
+}
+
+Table user_email {
+  id         int     [pk, increment]
+  user_id    int     [ref: > users.id]
+  email      varchar(100) [not null, unique]
+  type       varchar(20)
+  is_primary boolean      [default: false]
+
+  indexes {
+    (user_id, is_primary)
+  }
 }
 
 Table user_phones {
-  id      int  [pk, increment]
-  user_id int  [ref: > users.id]
-  phone   varchar(20)
-  type    varchar(20)
+  id         int     [pk, increment]
+  user_id    int     [ref: > users.id]
+  phone      varchar(20) [not null, unique]
+  type       varchar(20)
+  is_primary boolean      [default: false]
+
+  indexes {
+    (user_id, is_primary)
+  }
 }
 
 Table roles {
   id          int    [pk, increment]
   name        varchar(50) [not null, unique]
   description text
+
+  indexes {
+    (name)
+  }
+}
+
+Table permissions {
+  id          int    [pk, increment]
+  name        varchar(50) [not null, unique]
+  description text
+
+  indexes {
+    (name)
+  }
+}
+
+Table role_permissions {
+  role_id       int [ref: > roles.id]
+  permission_id int [ref: > permissions.id]
+
+  indexes {
+    (role_id, permission_id) [pk]
+    (permission_id)
+  }
 }
 
 Table user_roles {
@@ -35,42 +96,42 @@ Table user_roles {
 
   indexes {
     (user_id, role_id) [pk]
+    (role_id)
   }
 }
 
-Table employees {
-  user_id        int        [pk, ref: > users.id]
-  full_name      varchar(100) [not null]
-  position       varchar(50)
-  license_number varchar(50)
-  specialties    text
-  hired_at       date
-  deleted_at     timestamp
-  created_at     timestamp
-  updated_at     timestamp
-}
-
-Table patients {
-  user_id                  int        [pk, ref: > users.id]
-  full_name                varchar(100) [not null]
-  date_of_birth            date
-  gender                   varchar(10)
-  medical_history          text
-  allergy                  text
-  emergency_contact_name   varchar(100)
-  emergency_contact_phone  varchar(20)
-  insurance_provider       varchar(100)
-  insurance_number         varchar(50)
-  deleted_at               timestamp
-  created_at               timestamp
-  updated_at               timestamp
+Table branches {
+  id          int          [pk, increment]
+  name        varchar(100) [not null, unique]
+  address     varchar(255)
+  phone       varchar(20)
+  email       varchar(100)
+  is_active   boolean      [default: true]
+  created_at  timestamp
+  updated_at  timestamp
 }
 
 Table rooms {
   id          int    [pk, increment]
-  name        varchar(50) [not null, unique]
+  branch_id   int    [ref: > branches.id]
+  name        varchar(50) [not null]
   description text
+
+  indexes {
+    (branch_id, name) [unique]
+  }
 }
+
+Table employee_branches {
+  employee_id   int [ref: > employees.user_id]
+  branch_id     int [ref: > branches.id]
+
+  indexes {
+    (employee_id, branch_id) [pk]
+    (branch_id)
+  }
+}
+
 
 Table service_categories {
   id          int    [pk, increment]
@@ -110,6 +171,46 @@ Table package_services {
   }
 }
 
+
+Table discount_codes {
+  id           int          [pk, increment]
+  code         varchar(50)  [not null, unique]
+  description  text
+  type         varchar(20)
+  amount       decimal(10,2)
+  valid_from   date
+  valid_to     date
+  is_active    boolean      [default: true]
+  created_at   timestamp
+  updated_at   timestamp
+
+  indexes {
+    (code)
+    (valid_from, valid_to)
+  }
+}
+
+Table service_discounts {
+  service_id       int [ref: > services.id]
+  discount_code_id int [ref: > discount_codes.id]
+
+  indexes {
+    (service_id, discount_code_id) [pk]
+    (discount_code_id)
+  }
+}
+
+Table package_discounts {
+  package_id       int [ref: > packages.id]
+  discount_code_id int [ref: > discount_codes.id]
+
+  indexes {
+    (package_id, discount_code_id) [pk]
+    (discount_code_id)
+  }
+}
+
+
 Table appointment_statuses {
   code varchar(30) [pk]
   name text
@@ -126,15 +227,19 @@ Table notification_statuses {
 }
 
 Table appointments {
-  id          int       [pk, increment]
-  patient_id  int       [ref: > patients.user_id]
-  room_id     int       [ref: > rooms.id]
-  scheduled_at timestamp
-  status_code varchar(30) [ref: > appointment_statuses.code]
-  notes       text
-  deleted_at  timestamp
-  created_at  timestamp
-  updated_at  timestamp
+  id            int        [pk, increment]
+  patient_id    int        [ref: > patients.user_id]
+  room_id       int        [ref: > rooms.id]
+  scheduled_at  timestamp  
+  status_code   varchar(30) [ref: > appointment_statuses.code]
+  notes         text
+  deleted_at    timestamp  
+  created_at    timestamp
+  updated_at    timestamp
+
+  indexes {
+    (status_code)
+  }
 }
 
 Table appointment_staff {
@@ -144,6 +249,7 @@ Table appointment_staff {
 
   indexes {
     (appointment_id, employee_id) [pk]
+    (employee_id)
   }
 }
 
@@ -186,70 +292,6 @@ Table medical_images {
   notes          text
 }
 
-Table invoices {
-  id            int       [pk, increment]
-  appointment_id int      [ref: > appointments.id]
-  total_amount  float
-  status_code   varchar(30) [ref: > invoice_statuses.code]
-  issued_at     timestamp
-  due_date      date
-  created_at    timestamp
-  updated_at    timestamp
-}
-
-Table invoice_items {
-  id          int    [pk, increment]
-  invoice_id  int    [ref: > invoices.id]
-  description varchar(255)
-  quantity    int
-  unit_price  float
-  line_amount float
-}
-
-Table payments {
-  id             int    [pk, increment]
-  invoice_id     int    [ref: > invoices.id]
-  payment_method varchar(50)
-  amount         float
-  paid_at        timestamp
-}
-
-Table notification_history {
-  id             int    [pk, increment]
-  patient_id     int    [ref: > patients.user_id]
-  appointment_id int    [ref: > appointments.id]
-  channel        varchar(20)
-  content        text
-  sent_at        timestamp
-  status_code    varchar(30) [ref: > notification_statuses.code]
-  created_at     timestamp
-}
-
-Table patient_teeth {
-  patient_id int    [ref: > patients.user_id]
-  tooth_code varchar(5)
-  status     varchar(50)
-
-  indexes {
-    (patient_id, tooth_code) [pk]
-  }
-}
-
-Table inventory_items {
-  id           int    [pk, increment]
-  name         varchar(100)
-  unit         varchar(20)
-  quantity     int
-  reorder_level int
-}
-
-Table inventory_movements {
-  id         int       [pk, increment]
-  item_id    int       [ref: > inventory_items.id]
-  change_qty int
-  reason     varchar(100)
-  occurred_at timestamp
-}
 
 Table prescriptions {
   id             int       [pk, increment]
@@ -258,11 +300,11 @@ Table prescriptions {
 }
 
 Table prescription_items {
-  id             int    [pk, increment]
-  prescription_id int   [ref: > prescriptions.id]
-  medicine_name  varchar(100)
-  dosage         varchar(50)
-  quantity       int
+  id              int    [pk, increment]
+  prescription_id int    [ref: > prescriptions.id]
+  medicine_name   varchar(100)
+  dosage          varchar(50)
+  quantity        int
 }
 
 Table lab_tests {
@@ -280,5 +322,109 @@ Table appointment_lab_tests {
 
   indexes {
     (appointment_id, test_id) [pk]
+  }
+}
+
+
+Table invoices {
+  id             int       [pk, increment]
+  appointment_id int       [ref: > appointments.id]
+  total_amount   float
+  status_code    varchar(30) [ref: > invoice_statuses.code]
+  issued_at      timestamp
+  due_date       date
+  created_at     timestamp
+  updated_at     timestamp
+}
+
+Table invoice_items {
+  id          int    [pk, increment]
+  invoice_id  int    [ref: > invoices.id]
+  description varchar(255)
+  quantity    int
+  unit_price  float
+  line_amount float
+
+  indexes {
+    (invoice_id)
+  }
+}
+
+Table payments {
+  id             int    [pk, increment]
+  invoice_id     int    [ref: > invoices.id]
+  payment_method varchar(50)
+  amount         float
+  paid_at        timestamp
+
+  indexes {
+    (invoice_id)
+    (paid_at)
+  }
+}
+
+Table credit_notes {
+  id          int       [pk, increment]
+  invoice_id  int       [ref: > invoices.id]
+  amount      float
+  reason      text
+  issued_at   timestamp
+  created_at  timestamp
+  updated_at  timestamp
+
+  indexes {
+    (invoice_id)
+  }
+}
+
+
+Table notification_history {
+  id             int    [pk, increment]
+  patient_id     int    [ref: > patients.user_id]
+  appointment_id int    [ref: > appointments.id]
+  channel        varchar(20)
+  content        text
+  sent_at        timestamp
+  status_code    varchar(30) [ref: > notification_statuses.code]
+  created_at     timestamp
+
+  indexes {
+    (patient_id)
+    (appointment_id)
+  }
+}
+
+Table patient_teeth {
+  patient_id int    [ref: > patients.user_id]
+  tooth_code varchar(5)
+  status     varchar(50)
+
+  indexes {
+    (patient_id, tooth_code) [pk]
+  }
+}
+
+
+Table inventory_items {
+  id            int    [pk, increment]
+  name          varchar(100)
+  unit          varchar(20)
+  quantity      int
+  reorder_level int
+
+  indexes {
+    (name)
+  }
+}
+
+Table inventory_movements {
+  id           int       [pk, increment]
+  item_id      int       [ref: > inventory_items.id]
+  change_qty   int
+  reason       varchar(100)
+  occurred_at  timestamp
+
+  indexes {
+    (item_id)
   }
 }
